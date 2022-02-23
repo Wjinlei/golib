@@ -5,16 +5,12 @@ import (
 	"testing"
 )
 
-func TestMd5(t *testing.T) {
-	fmt.Println(Md5([]byte("Hello")))
+func TestString(t *testing.T) {
+	fmt.Println(String("Hello"))
 }
 
-func TestMd5String(t *testing.T) {
-	fmt.Println(Md5String("Hello"))
-}
-
-func TestMd5File(t *testing.T) {
-	md5, err := Md5Path("./md5.go")
+func TestFile(t *testing.T) {
+	md5, err := File("./md5.go")
 	if err != nil {
 		t.Fatal(err)
 	}

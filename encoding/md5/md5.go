@@ -6,18 +6,18 @@ import (
 	"io/ioutil"
 )
 
-func Md5(data []byte) string {
+func md5sum(data []byte) string {
 	return fmt.Sprintf("%x", md5.Sum(data))
 }
 
-func Md5String(str string) string {
-	return Md5([]byte(str))
+func String(str string) string {
+	return md5sum([]byte(str))
 }
 
-func Md5Path(path string) (string, error) {
+func File(path string) (string, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
-	return Md5(data), nil
+	return md5sum(data), nil
 }
