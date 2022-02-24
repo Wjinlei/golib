@@ -127,6 +127,7 @@ func (bin recycleBinStruct) Restore(fileNameInRecycleBin string) error {
 	return nil
 }
 
+// Delete 彻底删除文件
 func (bin recycleBinStruct) Delete(fileNameInRecycleBin string) error {
 	// 文件的实际路径
 	filePathInRecycleBin := fmt.Sprintf("%s/files/%s", bin.Path, fileNameInRecycleBin)
@@ -143,6 +144,7 @@ func (bin recycleBinStruct) Delete(fileNameInRecycleBin string) error {
 	return nil
 }
 
+// Empty 清空回收站
 func (bin recycleBinStruct) Empty() error {
 	filesDir := fmt.Sprintf("%s/files", bin.Path)
 	infoDir := fmt.Sprintf("%s/info", bin.Path)

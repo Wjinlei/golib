@@ -14,13 +14,13 @@ func GetAbsPath(filePath string) (string, error) {
 	if strings.HasSuffix(filePath, ".") || strings.HasSuffix(filePath, "..") {
 		filePath = filePath + "/"
 	}
-	abs, err := filepath.Abs(filepath.Dir(filePath))
+	filePathAbs, err := filepath.Abs(filepath.Dir(filePath))
 	if err != nil {
 		return "", err
 	}
 	name := filepath.Base(filePath)
 	if name == "." || name == ".." {
-		return filepath.FromSlash(abs), nil
+		return filepath.FromSlash(filePathAbs), nil
 	}
-	return filepath.FromSlash(fmt.Sprintf("%s/%s", abs, filepath.Base(filePath))), nil
+	return filepath.FromSlash(fmt.Sprintf("%s/%s", filePathAbs, filepath.Base(filePath))), nil
 }
