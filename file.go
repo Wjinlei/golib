@@ -8,13 +8,13 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
 const (
-	FileCreate int = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
-	FileAppend int = os.O_WRONLY | os.O_CREATE | os.O_APPEND
+	FileCreate = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+	FileAppend = os.O_WRONLY | os.O_CREATE | os.O_APPEND
 )
 
 // FileWrite 写入字符串到文件
@@ -45,7 +45,7 @@ func MakeDir(dirPath string) error {
 
 // MakeDirParent 创建指定目录的父级目录
 func MakeDirParent(dirPath string) error {
-	if err := os.MkdirAll(path.Dir(dirPath), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(dirPath), os.ModePerm); err != nil {
 		if !os.IsExist(err) {
 			return err
 		}
