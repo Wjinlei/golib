@@ -35,6 +35,11 @@ func HostDev(combineWith ...string) string {
 	return GetEnv("HOST_DEV", "/dev", combineWith...)
 }
 
+// HostTmp 从环境变量获取tmp路径
+func HostTmp(combineWith ...string) string {
+	return GetEnv("HOST_TMP", "/tmp", combineWith...)
+}
+
 // GetEnv retrieves the environment variable key. If it does not exist it returns the default.
 func GetEnv(key string, defaultValue string, combineWith ...string) string {
 	value := os.Getenv(key)

@@ -5,6 +5,7 @@ import (
 	"golib"
 	"golib/config/ini"
 	"path/filepath"
+	"strings"
 )
 
 // 回收站结构体
@@ -14,10 +15,10 @@ type recycleBinStruct struct {
 
 // RecycleBinInterface 回收站操作接口
 type RecycleBinInterface interface {
-	Remove(filePath string) error  // 移除文件到回收站
-	Restore(fileName string) error // 恢复文件
-	Delete(fileName string) error  // 彻底删除文件
-	Empty() error                  // 清空回收站
+	Remove(filePath string) (fileNameInRecycleBin string, err error) // 移除文件到回收站
+	Restore(fileNameInRecycleBin string) error                       // 恢复文件
+	Delete(fileNameInRecycleBin string) error                        // 彻底删除文件
+	Empty() error                                                    // 清空回收站
 }
 
 // NewRecycleBin 新建回收站
@@ -27,10 +28,12 @@ func NewRecycleBin(location string) (RecycleBinInterface, error) {
 		return nil, err
 	}
 
-	if err := golib.MakeDir(fmt.Sprintf("%s/files", filePathAbs)); err != nil {
+	err = golib.MakeDir(fmt.Sprintf("%s/files", filePathAbs))
+	if err != nil {
 		return nil, err
 	}
-	if err := golib.MakeDir(fmt.Sprintf("%s/info", filePathAbs)); err != nil {
+	err = golib.MakeDir(fmt.Sprintf("%s/info", filePathAbs))
+	if err != nil {
 		return nil, err
 	}
 
@@ -39,11 +42,12 @@ func NewRecycleBin(location string) (RecycleBinInterface, error) {
 	return bin, nil
 }
 
-func (bin recycleBinStruct) Remove(filePath string) error {
+// Remove 移动文件到回收站
+func (bin recycleBinStruct) Remove(filePath string) (fileNameInRecycleBin string, err error) {
 	// 获取文件的绝对路径
 	filePathAbs, err := golib.GetAbsPath(filePath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// 随机字符串
@@ -54,7 +58,7 @@ func (bin recycleBinStruct) Remove(filePath string) error {
 	r5 := golib.CreateRandomString(8)
 
 	// 文件在回收站中的名字
-	fileNameInRecycleBin := fmt.Sprintf("%s-%s-%s-%s-%s", r1, r2, r3, r4, r5)
+	fileNameInRecycleBin = fmt.Sprintf("%s-%s-%s-%s-%s", r1, r2, r3, r4, r5)
 	// 文件信息在回收站中的名字
 	infoNameInRecycleBin := fmt.Sprintf("%s-%s-%s-%s-%s.trashinfo", r1, r2, r3, r4, r5)
 	// 文件的实际路径
@@ -62,37 +66,108 @@ func (bin recycleBinStruct) Remove(filePath string) error {
 	// 文件信息的实际路径
 	infoPathInRecycleBin := fmt.Sprintf("%s/info/%s", bin.Path, infoNameInRecycleBin)
 
-	// 移动文件到回收站
-	if err := golib.Move(filePathAbs, filePathInRecycleBin); err != nil {
-		return err
-	}
-
 	// 加载info文件
 	configStruct := ini.New()
 	configObject, err := configStruct.Create(infoPathInRecycleBin)
 	if err != nil {
-		return err
+		return "", err
 	}
 	configObject.File.Section("Trash Info").Key("Path").SetValue(filePathAbs)
 	configObject.File.Section("Trash Info").Key("Name").SetValue(filepath.Base(filePathAbs))
 	configObject.File.Section("Trash Info").Key("DeletionDate").SetValue(golib.GetNowTime())
 
 	// 保存
-	if err := configObject.Save(); err != nil {
+	err = configObject.Save()
+	if err != nil {
+		return "", err
+	}
+
+	// 移动文件到回收站
+	err = golib.Move(filePathAbs, filePathInRecycleBin)
+	if err != nil {
+		return "", err
+	}
+
+	return fileNameInRecycleBin, nil
+}
+
+// Restore 从回收站恢复文件
+func (bin recycleBinStruct) Restore(fileNameInRecycleBin string) error {
+	// 文件的实际路径
+	filePathInRecycleBin := fmt.Sprintf("%s/files/%s", bin.Path, fileNameInRecycleBin)
+	// 文件信息的实际路径
+	infoPathInRecycleBin := fmt.Sprintf("%s/info/%s.trashinfo", bin.Path, fileNameInRecycleBin)
+
+	// 加载Info文件
+	configStruct := ini.New()
+	configObject, err := configStruct.LoadFile(infoPathInRecycleBin)
+	if err != nil {
 		return err
 	}
 
+	// 读取文件真实路径
+	realPathObject, err := configObject.File.Section("Trash Info").GetKey("Path")
+	if err != nil {
+		return err
+	}
+	realPath := realPathObject.String()
+	if strings.TrimSpace(realPath) == "" {
+		return fmt.Errorf("path is empty")
+	}
+
+	// 还原到真实路径
+	err = golib.Move(filePathInRecycleBin, realPath)
+	if err != nil {
+		return err
+	}
+
+	// 删除Info文件
+	_ = golib.Delete(infoPathInRecycleBin)
+
 	return nil
 }
 
-func (bin recycleBinStruct) Restore(fileName string) error {
-	return nil
-}
+func (bin recycleBinStruct) Delete(fileNameInRecycleBin string) error {
+	// 文件的实际路径
+	filePathInRecycleBin := fmt.Sprintf("%s/files/%s", bin.Path, fileNameInRecycleBin)
+	// 文件信息的实际路径
+	infoPathInRecycleBin := fmt.Sprintf("%s/info/%s.trashinfo", bin.Path, fileNameInRecycleBin)
 
-func (bin recycleBinStruct) Delete(fileName string) error {
+	// 删除文件
+	err := golib.Delete(filePathInRecycleBin)
+	if err != nil {
+		return err
+	}
+	_ = golib.Delete(infoPathInRecycleBin)
+
 	return nil
 }
 
 func (bin recycleBinStruct) Empty() error {
+	filesDir := fmt.Sprintf("%s/files", bin.Path)
+	infoDir := fmt.Sprintf("%s/info", bin.Path)
+
+	// 清空回收站目录
+	err := golib.DeleteAll(filesDir)
+	if err != nil {
+		return err
+	}
+
+	err = golib.DeleteAll(infoDir)
+	if err != nil {
+		return err
+	}
+
+	// 重建目录
+	err = golib.MakeDir(filesDir)
+	if err != nil {
+		return err
+	}
+
+	err = golib.MakeDir(infoDir)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
