@@ -205,7 +205,7 @@ func FileDownload(url string, path string) error {
 	if err := MakeDirParent(path); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(path, FileCreate, 0644)
 	if err != nil {
 		return err
 	}
