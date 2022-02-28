@@ -36,9 +36,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"golib/encoding"
 	"io"
-
-	"github.com/axgle/mahonia"
 )
 
 func setAesKey(key string, length int) ([]byte, error) {
@@ -52,7 +51,7 @@ func setAesKey(key string, length int) ([]byte, error) {
 	return nil, fmt.Errorf("key size is not 16 or 24 or 32, but %d", len(b))
 }
 
-func AesCFBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...string) (ciphertext []byte, err error) {
+func aesCFBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...string) (ciphertext []byte, err error) {
 	keyByte, err := setAesKey(key, keyLength)
 	if err != nil {
 		return nil, err
@@ -64,12 +63,12 @@ func AesCFBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...s
 	if len(paddingType) > 0 {
 		switch paddingType[0] {
 		case "ZeroPadding":
-			plaintext = ZeroPadding(plaintext, aes.BlockSize)
+			plaintext = zeroPadding(plaintext, aes.BlockSize)
 		case "PKCS5Padding":
-			plaintext = PKCS5Padding(plaintext, aes.BlockSize)
+			plaintext = pkcs5Padding(plaintext, aes.BlockSize)
 		}
 	} else {
-		plaintext = PKCS5Padding(plaintext, aes.BlockSize)
+		plaintext = pkcs5Padding(plaintext, aes.BlockSize)
 	}
 
 	ciphertext = make([]byte, aes.BlockSize+len(plaintext))
@@ -83,27 +82,27 @@ func AesCFBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...s
 
 }
 
-func AesCFBEncryptToHex(plaintext []byte, key string, keyLength int, paddingType ...string) (string, error) {
-	cipherText, err := AesCFBEncrypt(plaintext, key, keyLength, paddingType...)
+func GbkAesCFBEncrypt(plaintext string, key string, keyLength int, paddingType ...string) (string, error) {
+	plainTextGbk, err := encoding.Utf8ToGbk([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	cipherText, err := aesCFBEncrypt(plainTextGbk, key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(cipherText), nil
 }
 
-func EncodeStringAesCFBEncryptToHex(plaintext string, key string, keyLength int, coding string, paddingType ...string) (string, error) {
-	enCoder := mahonia.NewEncoder(coding)
-	if enCoder == nil {
-		return "", fmt.Errorf("GetEncoder failed")
-	}
-	hexText, err := AesCFBEncryptToHex([]byte(enCoder.ConvertString(plaintext)), key, keyLength, paddingType...)
+func Utf8AesCFBEncrypt(plaintext string, key string, keyLength int, paddingType ...string) (string, error) {
+	cipherText, err := aesCFBEncrypt([]byte(plaintext), key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
-	return hexText, nil
+	return hex.EncodeToString(cipherText), nil
 }
 
-func AesCFBDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...string) (plaintext []byte, err error) {
+func aesCFBDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...string) (plaintext []byte, err error) {
 	if len(ciphertext) < aes.BlockSize {
 		return nil, errors.New("ciphertext too short")
 	}
@@ -124,41 +123,45 @@ func AesCFBDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...
 	if len(paddingType) > 0 {
 		switch paddingType[0] {
 		case "ZeroUnPadding":
-			plaintext = ZeroUnPadding(ciphertext)
+			plaintext = zeroUnPadding(ciphertext)
 		case "PKCS5UnPadding":
-			plaintext = ZeroUnPadding(ciphertext)
+			plaintext = zeroUnPadding(ciphertext)
 		}
 	} else {
-		plaintext = PKCS5UnPadding(ciphertext)
+		plaintext = pkcs5UnPadding(ciphertext)
 	}
 	return plaintext, nil
 }
 
-func AesCFBDecryptFromHex(hextext string, key string, keyLength int, paddingType ...string) (string, error) {
-	deCodeHex, err := hex.DecodeString(hextext)
+func GbkAesCFBDecrypt(hexText string, key string, keyLength int, paddingType ...string) (string, error) {
+	deCodeHex, err := hex.DecodeString(hexText)
 	if err != nil {
 		return "", err
 	}
-	plainText, err := AesCFBDecrypt(deCodeHex, key, keyLength, paddingType...)
+	plainText, err := aesCFBDecrypt(deCodeHex, key, keyLength, paddingType...)
+	if err != nil {
+		return "", err
+	}
+	plainTextUtf8, err := encoding.GbkToUtf8(plainText)
+	if err != nil {
+		return "", err
+	}
+	return string(plainTextUtf8), nil
+}
+
+func Utf8AesCFBDecrypt(hexText string, key string, keyLength int, paddingType ...string) (string, error) {
+	deCodeHex, err := hex.DecodeString(hexText)
+	if err != nil {
+		return "", err
+	}
+	plainText, err := aesCFBDecrypt(deCodeHex, key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
 	return string(plainText), nil
 }
 
-func DecodeStringAesCFBDecryptFromHex(hextext string, key string, keyLength int, coding string, paddingType ...string) (string, error) {
-	plainText, err := AesCFBDecryptFromHex(hextext, key, keyLength, paddingType...)
-	if err != nil {
-		return "", err
-	}
-	deCoder := mahonia.NewDecoder(coding)
-	if deCoder == nil {
-		return "", fmt.Errorf("GetDecoder failed")
-	}
-	return deCoder.ConvertString(plainText), nil
-}
-
-func AesCBCEncrypt(plaintext []byte, key string, keyLength int, paddingType ...string) (ciphertext []byte, err error) {
+func aesCBCEncrypt(plaintext []byte, key string, keyLength int, paddingType ...string) (ciphertext []byte, err error) {
 	keyByte, err := setAesKey(key, keyLength)
 	if err != nil {
 		return nil, err
@@ -170,12 +173,12 @@ func AesCBCEncrypt(plaintext []byte, key string, keyLength int, paddingType ...s
 	if len(paddingType) > 0 {
 		switch paddingType[0] {
 		case "ZeroPadding":
-			plaintext = ZeroPadding(plaintext, aes.BlockSize)
+			plaintext = zeroPadding(plaintext, aes.BlockSize)
 		case "PKCS5Padding":
-			plaintext = PKCS5Padding(plaintext, aes.BlockSize)
+			plaintext = pkcs5Padding(plaintext, aes.BlockSize)
 		}
 	} else {
-		plaintext = PKCS5Padding(plaintext, aes.BlockSize)
+		plaintext = pkcs5Padding(plaintext, aes.BlockSize)
 	}
 	ciphertext = make([]byte, aes.BlockSize+len(plaintext))
 	iv := ciphertext[:aes.BlockSize]
@@ -186,27 +189,27 @@ func AesCBCEncrypt(plaintext []byte, key string, keyLength int, paddingType ...s
 	return ciphertext, nil
 }
 
-func AesCBCEncryptToHex(plaintext []byte, key string, keyLength int, paddingType ...string) (string, error) {
-	cipherText, err := AesCBCEncrypt(plaintext, key, keyLength, paddingType...)
+func GbkAesCBCEncrypt(plaintext string, key string, keyLength int, paddingType ...string) (string, error) {
+	plainTextGbk, err := encoding.Utf8ToGbk([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	cipherText, err := aesCBCEncrypt(plainTextGbk, key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(cipherText), nil
 }
 
-func EncodeStringAesCBCEncryptToHex(plaintext string, key string, keyLength int, coding string, paddingType ...string) (string, error) {
-	enCoder := mahonia.NewEncoder(coding)
-	if enCoder == nil {
-		return "", fmt.Errorf("GetEncoder failed")
-	}
-	hexText, err := AesCBCEncryptToHex([]byte(enCoder.ConvertString(plaintext)), key, keyLength, paddingType...)
+func Utf8AesCBCEncrypt(plaintext string, key string, keyLength int, paddingType ...string) (string, error) {
+	cipherText, err := aesCBCEncrypt([]byte(plaintext), key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
-	return hexText, nil
+	return hex.EncodeToString(cipherText), nil
 }
 
-func AesCBCDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...string) (plaintext []byte, err error) {
+func aesCBCDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...string) (plaintext []byte, err error) {
 	if len(ciphertext) < aes.BlockSize {
 		return nil, errors.New("ciphertext too short")
 	}
@@ -227,41 +230,45 @@ func AesCBCDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...
 	if len(paddingType) > 0 {
 		switch paddingType[0] {
 		case "ZeroUnPadding":
-			plaintext = ZeroUnPadding(ciphertext)
+			plaintext = zeroUnPadding(ciphertext)
 		case "PKCS5UnPadding":
-			plaintext = PKCS5UnPadding(ciphertext)
+			plaintext = pkcs5UnPadding(ciphertext)
 		}
 	} else {
-		plaintext = PKCS5UnPadding(ciphertext)
+		plaintext = pkcs5UnPadding(ciphertext)
 	}
 	return plaintext, nil
 }
 
-func AesCBCDecryptFromHex(hextext string, key string, keyLength int, paddingType ...string) (string, error) {
-	deCodeHex, err := hex.DecodeString(hextext)
+func GbkAesCBCDecrypt(hexText string, key string, keyLength int, paddingType ...string) (string, error) {
+	deCodeHex, err := hex.DecodeString(hexText)
 	if err != nil {
 		return "", err
 	}
-	plainText, err := AesCBCDecrypt(deCodeHex, key, keyLength, paddingType...)
+	plainText, err := aesCBCDecrypt(deCodeHex, key, keyLength, paddingType...)
+	if err != nil {
+		return "", err
+	}
+	plainTextUtf8, err := encoding.GbkToUtf8(plainText)
+	if err != nil {
+		return "", err
+	}
+	return string(plainTextUtf8), nil
+}
+
+func Utf8AesCBCDecrypt(hexText string, key string, keyLength int, paddingType ...string) (string, error) {
+	deCodeHex, err := hex.DecodeString(hexText)
+	if err != nil {
+		return "", err
+	}
+	plainText, err := aesCBCDecrypt(deCodeHex, key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
 	return string(plainText), nil
 }
 
-func DecodeStringAesCBCDecryptFromHex(hextext string, key string, keyLength int, coding string, paddingType ...string) (string, error) {
-	plainText, err := AesCBCDecryptFromHex(hextext, key, keyLength, paddingType...)
-	if err != nil {
-		return "", err
-	}
-	deCoder := mahonia.NewDecoder(coding)
-	if deCoder == nil {
-		return "", fmt.Errorf("GetDecoder failed")
-	}
-	return deCoder.ConvertString(plainText), nil
-}
-
-func AesECBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...string) (ciphertext []byte, err error) {
+func aesECBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...string) (ciphertext []byte, err error) {
 	keyByte, err := setAesKey(key, keyLength)
 	if err != nil {
 		return nil, err
@@ -269,12 +276,12 @@ func AesECBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...s
 	if len(paddingType) > 0 {
 		switch paddingType[0] {
 		case "ZeroPadding":
-			plaintext = ZeroPadding(plaintext, aes.BlockSize)
+			plaintext = zeroPadding(plaintext, aes.BlockSize)
 		case "PKCS5Padding":
-			plaintext = PKCS5Padding(plaintext, aes.BlockSize)
+			plaintext = pkcs5Padding(plaintext, aes.BlockSize)
 		}
 	} else {
-		plaintext = PKCS5Padding(plaintext, aes.BlockSize)
+		plaintext = pkcs5Padding(plaintext, aes.BlockSize)
 	}
 	if len(plaintext)%aes.BlockSize != 0 {
 		return nil, errors.New("plaintext is not a multiple of the block size")
@@ -284,31 +291,31 @@ func AesECBEncrypt(plaintext []byte, key string, keyLength int, paddingType ...s
 		return nil, err
 	}
 	ciphertext = make([]byte, len(plaintext))
-	NewECBEncrypter(block).CryptBlocks(ciphertext, plaintext)
+	newECBEncryptor(block).CryptBlocks(ciphertext, plaintext)
 	return ciphertext, nil
 }
 
-func AesECBEncryptToHex(plaintext []byte, key string, keyLength int, paddingType ...string) (string, error) {
-	cipherText, err := AesECBEncrypt(plaintext, key, keyLength, paddingType...)
+func GbkAesECBEncrypt(plaintext string, key string, keyLength int, paddingType ...string) (string, error) {
+	plainTextGbk, err := encoding.Utf8ToGbk([]byte(plaintext))
+	if err != nil {
+		return "", err
+	}
+	cipherText, err := aesECBEncrypt(plainTextGbk, key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
 	return hex.EncodeToString(cipherText), nil
 }
 
-func EncodeStringAesECBEncryptToHex(plaintext string, key string, keyLength int, coding string, paddingType ...string) (string, error) {
-	enCoder := mahonia.NewEncoder(coding)
-	if enCoder == nil {
-		return "", fmt.Errorf("GetEncoder failed")
-	}
-	hexText, err := AesECBEncryptToHex([]byte(enCoder.ConvertString(plaintext)), key, keyLength, paddingType...)
+func Utf8AesECBEncrypt(plaintext string, key string, keyLength int, paddingType ...string) (string, error) {
+	cipherText, err := aesECBEncrypt([]byte(plaintext), key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
-	return hexText, nil
+	return hex.EncodeToString(cipherText), nil
 }
 
-func AesECBDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...string) (plaintext []byte, err error) {
+func aesECBDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...string) (plaintext []byte, err error) {
 	if len(ciphertext) < aes.BlockSize {
 		return nil, errors.New("ciphertext too short")
 	}
@@ -324,63 +331,67 @@ func AesECBDecrypt(ciphertext []byte, key string, keyLength int, paddingType ...
 	if err != nil {
 		return nil, err
 	}
-	NewECBDecrypter(block).CryptBlocks(ciphertext, ciphertext)
+	newECBDecryptor(block).CryptBlocks(ciphertext, ciphertext)
 	if len(paddingType) > 0 {
 		switch paddingType[0] {
 		case "ZeroUnPadding":
-			plaintext = ZeroUnPadding(ciphertext)
+			plaintext = zeroUnPadding(ciphertext)
 		case "PKCS5UnPadding":
-			plaintext = PKCS5UnPadding(ciphertext)
+			plaintext = pkcs5UnPadding(ciphertext)
 		}
 	} else {
-		plaintext = PKCS5UnPadding(ciphertext)
+		plaintext = pkcs5UnPadding(ciphertext)
 	}
 	return plaintext, nil
 }
 
-func AesECBDecryptFromHex(hextext string, key string, keyLength int, paddingType ...string) (string, error) {
-	deCodeHex, err := hex.DecodeString(hextext)
+func GbkAesECBDecrypt(hexText string, key string, keyLength int, paddingType ...string) (string, error) {
+	deCodeHex, err := hex.DecodeString(hexText)
 	if err != nil {
 		return "", err
 	}
-	plainText, err := AesECBDecrypt(deCodeHex, key, keyLength, paddingType...)
+	plainText, err := aesECBDecrypt(deCodeHex, key, keyLength, paddingType...)
+	if err != nil {
+		return "", err
+	}
+	plainTextUtf8, err := encoding.GbkToUtf8(plainText)
+	if err != nil {
+		return "", err
+	}
+	return string(plainTextUtf8), nil
+}
+
+func Utf8AesECBDecrypt(hexText string, key string, keyLength int, paddingType ...string) (string, error) {
+	deCodeHex, err := hex.DecodeString(hexText)
+	if err != nil {
+		return "", err
+	}
+	plainText, err := aesECBDecrypt(deCodeHex, key, keyLength, paddingType...)
 	if err != nil {
 		return "", err
 	}
 	return string(plainText), nil
 }
 
-func DecodeStringAesECBDecryptFromHex(hextext string, key string, keyLength int, coding string, paddingType ...string) (string, error) {
-	plainText, err := AesECBDecryptFromHex(hextext, key, keyLength, paddingType...)
-	if err != nil {
-		return "", err
-	}
-	deCoder := mahonia.NewDecoder(coding)
-	if deCoder == nil {
-		return "", fmt.Errorf("GetDecoder failed")
-	}
-	return deCoder.ConvertString(plainText), nil
-}
-
-func ZeroPadding(ciphertext []byte, blockSize int) []byte {
+func zeroPadding(ciphertext []byte, blockSize int) []byte {
 	padding := blockSize - len(ciphertext)%blockSize
 	padtext := bytes.Repeat([]byte{0}, padding)
 	return append(ciphertext, padtext...)
 }
 
-func ZeroUnPadding(origData []byte) []byte {
+func zeroUnPadding(origData []byte) []byte {
 	return bytes.TrimRightFunc(origData, func(r rune) bool {
 		return r == rune(0)
 	})
 }
 
-func PKCS5Padding(ciphertext []byte, blockSize int) []byte {
+func pkcs5Padding(ciphertext []byte, blockSize int) []byte {
 	padding := blockSize - len(ciphertext)%blockSize
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(ciphertext, padtext...)
 }
 
-func PKCS5UnPadding(origData []byte) []byte {
+func pkcs5UnPadding(origData []byte) []byte {
 	length := len(origData)
 	unpadding := int(origData[length-1])
 	return origData[:(length - unpadding)]
@@ -398,15 +409,15 @@ func newECB(b cipher.Block) *ecb {
 	}
 }
 
-type ecbEncrypter ecb
+type ecbEncryptor ecb
 
-func NewECBEncrypter(b cipher.Block) cipher.BlockMode {
-	return (*ecbEncrypter)(newECB(b))
+func newECBEncryptor(b cipher.Block) cipher.BlockMode {
+	return (*ecbEncryptor)(newECB(b))
 }
 
-func (x *ecbEncrypter) BlockSize() int { return x.blockSize }
+func (x *ecbEncryptor) BlockSize() int { return x.blockSize }
 
-func (x *ecbEncrypter) CryptBlocks(dst, src []byte) {
+func (x *ecbEncryptor) CryptBlocks(dst, src []byte) {
 	if len(src)%x.blockSize != 0 {
 		panic("crypto/cipher: input not full blocks")
 	}
@@ -420,15 +431,15 @@ func (x *ecbEncrypter) CryptBlocks(dst, src []byte) {
 	}
 }
 
-type ecbDecrypter ecb
+type ecbDecryptor ecb
 
-func NewECBDecrypter(b cipher.Block) cipher.BlockMode {
-	return (*ecbDecrypter)(newECB(b))
+func newECBDecryptor(b cipher.Block) cipher.BlockMode {
+	return (*ecbDecryptor)(newECB(b))
 }
 
-func (x *ecbDecrypter) BlockSize() int { return x.blockSize }
+func (x *ecbDecryptor) BlockSize() int { return x.blockSize }
 
-func (x *ecbDecrypter) CryptBlocks(dst, src []byte) {
+func (x *ecbDecryptor) CryptBlocks(dst, src []byte) {
 	if len(src)%x.blockSize != 0 {
 		panic("crypto/cipher: input not full blocks")
 	}
