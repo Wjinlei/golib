@@ -1,4 +1,4 @@
-package golib
+package cache
 
 import (
 	"sync"
