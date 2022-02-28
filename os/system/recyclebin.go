@@ -3,7 +3,7 @@ package system
 import (
 	"fmt"
 	"golib"
-	"golib/config/ini"
+	"golib/conf/ini"
 	"path/filepath"
 	"strings"
 )
