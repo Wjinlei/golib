@@ -4,7 +4,7 @@ package ini
 
 import (
 	"golib"
-	"gopkg.in/ini.v1"
+	"ini"
 )
 
 type ConfigStruct struct {
