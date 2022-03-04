@@ -17,6 +17,11 @@ const (
 	FileAppend = os.O_WRONLY | os.O_CREATE | os.O_APPEND
 )
 
+// TouchFile 创建文件
+func TouchFile(path string) error {
+	return FileWrite(path, "", FileCreate)
+}
+
 // FileWrite 写入字符串到文件
 func FileWrite(path string, content string, flag int) error {
 	file, err := os.OpenFile(path, flag, 0644)

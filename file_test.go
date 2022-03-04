@@ -16,6 +16,13 @@ func TestMakeDirParent(t *testing.T) {
 	}
 }
 
+func TestTouchFile(t *testing.T) {
+	err := TouchFile("test_file1.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestFileWrite(t *testing.T) {
 	if err := FileWrite("test_file1.txt", "Hello World\r\n", FileCreate); err != nil {
 		t.Fatal(err)
