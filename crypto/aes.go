@@ -36,8 +36,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"golib/encoding"
 	"io"
+
+	"github.com/Wjinlei/golib/encoding"
 )
 
 func setAesKey(key string, length int) ([]byte, error) {

@@ -3,13 +3,14 @@ package golib
 import (
 	"bufio"
 	"fmt"
-	"golib/validator"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/Wjinlei/golib/validator"
 )
 
 const (
