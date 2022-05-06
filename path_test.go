@@ -6,9 +6,9 @@ import (
 )
 
 func TestGetAbsPath(t *testing.T) {
-	abs, err := GetAbsPath("os/cmd")
-	if err != nil {
-		t.Fatal(err)
+	newPath := GetAbs("os/cmd")
+	if newPath == "os/cmd" {
+		t.Fatal("GetAbs fatal.")
 	}
-	fmt.Println(abs)
+	fmt.Println(newPath)
 }
