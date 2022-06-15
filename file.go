@@ -248,7 +248,7 @@ func LineCounter(r io.Reader) (int, error) {
 			count++
 		}
 	}
-	if readSize > 0 && count == 0 || count > 0 {
+	if readSize > 0 && count == 0 {
 		count++
 	}
 	if err == io.EOF {
