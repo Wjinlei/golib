@@ -256,3 +256,28 @@ func LineCounter(r io.Reader) (int, error) {
 	}
 	return count, err
 }
+
+// 判断User位上是否具有可执行权限
+func IsExecOwner(mode os.FileMode) bool {
+    return mode&0100 != 0
+}
+
+// 判断Group位上是否具有可执行权限
+func IsExecGroup(mode os.FileMode) bool {
+    return mode&0010 != 0
+}
+
+// 判断Other位上是否具有可执行权限
+func IsExecOther(mode os.FileMode) bool {
+    return mode&0001 != 0
+}
+
+// 判断UGO位上是否都具有可执行权限
+func IsExecAll(mode os.FileMode) bool {
+    return mode&0111 == 0111
+}
+
+// 判断UGO位上是否任意一位具有可执行权限
+func IsExecAny(mode os.FileMode) bool {
+    return mode&0111 != 0
+}
